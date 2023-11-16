@@ -3,29 +3,30 @@
 
 ターゲットとして[大規模言語モデル入門](https://gihyo.jp/book/2023/978-4-297-13633-8)（以降、本書）を読み進めるにあたり最低限必要な数学知識をメモしながら、内容の理解を目指します。
 このメモは基本自分向けですが、もしかすると他の方にも役立つかも知れないと思い公開します。
+初学者の観点ですので誤り多いと思います。気づいた方はコメントを残していただけると大変うれしいです。
 
-このページは全体的に更新途中です(2023/11/15現在)。
-初学者の観点ですので、誤り多しです。自分自身、数学が超苦手な状態から入門しているので、同じような属性の人がよく躓くポイントが理解できるように記載できているかもです。
-（多少のプログラミング言語経験があればよいかも・・・）
-
-## お品書き(更新中)
+## お品書き
 
 1. ベクトルの知識
 2. 内積に関する知識
 3. 行列と行列の和、積
 4. 行列とベクトルの関係、および、LLMとの関連
 5. 行列の積と内積演算の関係
-6. LLMの学習プロセスの大雑把な構造
-7. 自然言語とベクトルの関係(埋め込み行列とOneHotベクトル)
-8. Transformerの理解に挑戦(概要)
-9. Encoderの理解に挑戦
-9-1. Input Embedding(入力埋め込み)
-9-2. Positional Encoding(位置符号)
-9-3. self-attention(自己注意機構)
-9-4. Multi-Head Attention(マルチヘッド注意機構)
-9-5. Feed Forward(フィードフォワード層)
-9-6. 残差結合
-9-7. Add & Norm(層正規化)
+6. 確率・統計(Transformerで使うものだけ)
+7. LLMの学習プロセスの大雑把な構造
+8. 自然言語とベクトルの関係(埋め込み行列とOneHotベクトル)
+9. Transformerの理解に挑戦(概要)
+10. Encoderの理解に挑戦
+10-1. Input Embedding(入力埋め込み)
+10-2. Positional Encoding(位置符号)
+10-3. self-attention(自己注意機構)
+10-4. Multi-Head Attention(マルチヘッド注意機構)
+10-5. Feed Forward(フィードフォワード層)
+10-6. 残差結合
+10-7. Add & Norm(層正規化)
+11. Encoder/Decoderの理解に挑戦（今後予定)
+11-1. masked multi head attention（今後予定)
+11-2. 交差注意機構（今後予定)
 
 微積分については記載を省いています。以下理由になります。
 あとで後述しますが、深層学習の本質的なポイントは微分(偏微分)です。
@@ -466,6 +467,70 @@ LLMではベクトルや行列の積演算が多数出てきますが、都度�
 \end{array}
 ```
 これにて、LLMの基本を理解するベクトルと行列の基本知識は身についたかなと思います。
+
+## 確率・統計(Transformerで使うものに絞る)
+
+ここでは、確率・統計について、EncoderのAdd & Norm層で使う知識だけに絞って解説します。
+
+以下の表はサイコロの出る目と確率の表です。
+
+|X  |1  |2  |3  |4  |5  |6  |
+|---|---|---|---|---|---|---|
+|P  |1/6|1/6|1/6|1/6|1/6|1/6|
+
+このときサイコロの目の値を確率変数といい、$\boldsymbol{X}$で表します。事象$\boldsymbol{X}$が発生する確率を$\boldsymbol{P}$で表しています。
+また、上の表を関数に見立てて、例えば、サイコロの目が3の場合の確率を以下のように記します。
+
+```math
+P(X=3)=\frac{1}{6}
+```
+
+この$P(X)$を確率関数と言ったりします。
+
+上の表を一般的に記述すると以下のような感じになります。
+
+|X  |$x_1$|・・・|$x_n$|
+|---|-----|---|---|
+|P  |$p_1$|・・・|$p_n$|
+
+このとき、以下のように期待値（平均）$\mathbb{E}[\mathbf{X}]$と分散$\mathbb{V}[\mathbf{X}]$を定義します。
+
+```math
+\mathbb{E}[\mathbf{X}]=x_1p_1+\cdots+x_np_n=\sum_{i=1}^{n}x_ip_i
+```
+ここで、$\mathbb{E}[\mathbf{X}]=\mu$とおいて、
+```math
+\mathbb{V}[\mathbf{X}]=\mathbb{E}[(\mathbf{X}-\mu)^2]=(x_1-\mu)^2p_1+\cdots+(x_n-\mu)^2p_n=\sum_{i=1}^{n}(x_i-\mu)^2p_i
+```
+標準偏差は以下になります。
+```math
+\sigma=\sqrt{\mathbb{V}[\mathbb{X}]}
+```
+また、期待値と分散については以下の公式が成り立ちます（証明は省略します)。
+```math
+\mathbb{E}[a\mathbf{X}+b]=a\mathbb{E}[\mathbf{X}]+b
+```
+```math
+\mathbb{V}[a\mathbf{X}+b]=a^2\mathbb{V}[\mathbf{X}]
+```
+
+次に標準化というものを考えます。
+確率変数$\mathbf{X}$の期待値、標準偏差をそれぞれ$\mu=\mathbb{E}[\mathbb{X}]$、$\sigma=\sqrt{\mathbb{V}[\mathbb{X}]}$としたときに、以下の変数変換をすると、変換後の新しい$\mathbf{Z}$の期待値は0、標準偏差は1になります。
+
+```math
+\mathbf{Z}=\frac{\mathbf{X}-\mu}{\sigma}
+```
+
+以下、確かめです。$\sigma=\sqrt{\mathbb{V}[\mathbf{X}]}$より$\sigma^2=\mathbb{V}[\mathbf{X}]$に注意します。
+```math
+\mathbb{E}[\mathbf{Z}]=\mathbb{E}[\frac{\mathbf{X}-\mu}{\sigma}]=\frac{1}{\sigma}\mathbb{E}[\mathbf{X}-\mu]=\frac{1}{\sigma}(\mathbb{E}[\mathbf{X}]-\mu)=\frac{1}{\sigma}(\mu-\mu)=0
+```
+
+```math
+\mathbb{V}[\mathbf{Z}]=\mathbb{V}[\frac{\mathbf{X}-\mu}{\sigma}]=\frac{1}{\sigma^2}\mathbb{V}[\mathbf{X}]=\frac{1}{\sigma^2}\sigma^2=1
+```
+
+この変数変換が層正規化(Add & Norm)に登場してくるので、意識しておきましょう！
 
 ## LLMの学習プロセスの大雑把な構造
 
@@ -1042,7 +1107,41 @@ f(x,y)=f^{(o)}(f^{(3+)}(f^{(2+)}(f^{(1+)}(x))),y)
 
 ### Add & Norm(層正規化)
 
-作成中・・・(11/16)あたりに作成予定。
+この層の役割は、ベクトルの要素の値が過剰に大きい値になることで、学習/訓練が不安定になることを防ぐために、ベクトルの値を平均0、分散1の分布の値に正規化することです。
+この層への入力ベクトルを$D$次元の$\boldsymbol{x}$とします。また、ベクトルの要素の平均を$\mu_\boldsymbol{x}$、標準偏差$\sigma_\boldsymbol{x}$を以下とします。
+
+```math
+\mu_\boldsymbol{x} = \frac{1}{D}\sum_{i=1}^{D}x_i
+```
+```math
+\sigma_\boldsymbol{x}=\sqrt{\frac{1}{D}\sum_{i=1}^{D}(x_i-\mu_\boldsymbol{x})^2}
+```
+
+そして、この層の役割を担う「層正規化関数」を$layernorm(\boldsymbol{x})$と定義します。この関数の出力はベクトルになります。また、出力ベクトルの$k$番目の要素を$layernorm(\boldsymbol{x})_k$とするとき、具体的な値は以下になります。
+
+```math
+layernorm(\boldsymbol{x})_k=g_k\frac{x_k-\mu_\boldsymbol{x}}{\sigma_\boldsymbol{x}+\epsilon}+b_k
+```
+
+$g_k$と$b_k$はゲインベクトル$\boldsymbol{g}$とバイアスベクトル$\boldsymbol{b}$の$k$番目の要素です。この２つのベクトルはこの層の表現力を向上するために導入されていますが、$\boldsymbol{g}=\boldsymbol{1}$、$\boldsymbol{b}=\boldsymbol{0}$($\boldsymbol{g}$のすべて要素が1、$\boldsymbol{b}$のすべての要素が0)として無効化することも可能とのことです。なお、$\epsilon$はゼロ除算防止のために設けられており、0.000001などの非常に小さい値が用いられます。
+
+なお、層正規化関数は、入力ベクトルの要素を平均0、分散1の分布を持つ値に変換します。ゲインベクトルとバイアスベクトルを無効化したあとの式を考えるとよくわかります。
+
+```math
+layernorm(\boldsymbol{x})_k=\frac{x_k-\mu_\boldsymbol{x}}{\sigma_\boldsymbol{x}+\epsilon}
+```
+
+「確率・統計」のところに出てきた、確率分布の変数変換になります。確率変数$\boldsymbol{X}$を$\boldsymbol{Z}=\frac{\boldsymbol{X}-\mu}{\sigma}$として変換してやれば、平均0、分散1の分布に変換されます。「確率・統計」の変数変換が層正規化で使われていたのです！
+
+これで、Add & Norm層の説明は終わりです！
+
+ここまででTransformerのEncoderのほぼすべての要素を説明し終わりました。
+エンコーダ・デコーダ構成の場合に交差注意機構、masked multihead attentionが出てきますが、Encoderで説明した話とほぼ同じため、リクエストがあれば追記することにします。
+
+## Encoder/Decoderの理解に挑戦
+今後記載するかも。
+### masked multi head attention
+### 交差注意機構
 
 [^1]:ところで、なぜ、このような計算結果になるかですが、計算結果は、「単語の数×位置符号の次元数」×「位置符号の次元数×単語の数」の行列の積の結果、「単語の数×単語の数」サイズの行列になっています。実際手で計算してみると分かるのですが、この行列の行および列が単語の番号であり、行列の要素が内積の計算結果となっています。
 
